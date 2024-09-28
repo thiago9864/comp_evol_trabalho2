@@ -1,0 +1,207 @@
+<html lang="PT-BR">
+    <head>
+        <title>Visualizador de soluções</title>
+    </head>
+    <style>
+        html body {
+            border: 0;
+            margin: 0;
+            width: 100vw;
+            height: 100vh;
+            overflow: hidden;
+        }
+    </style>
+    <body>
+        <div style="display: flex; flex-direction: row; width: inherit; height: inherit">
+            <div style="overflow: auto; width: 80vw; height: 100vh">
+                <canvas id="myCanvas" style="border: 1px solid #d3d3d3; background-color: #555">
+                    Your browser does not support the HTML canvas tag.
+                </canvas>
+            </div>
+            
+            <div style="display: flex; flex-direction: column; width: 20%; height: inherit">
+                <div>Presets</div>
+                <input id="instancia" type="file" />
+                <textarea id="solucao" placeholder="Digite ou cole uma solução para a instância" style="height: 300px">
+1 	 1,2
+                    2 	 4,3,5
+                    3 	 6,7,9,8
+                    4 	 10,11
+                    5 	 12</textarea
+                >
+                <button id="btnLerSolucao">Ler solução</button>
+            </div>
+        </div>
+    </body>
+    <script lang="javascript">
+        // Obtem configuração do canvas
+        const canvas = document.getElementById("myCanvas");
+        const canvasWidth = window.innerWidth;
+        const canvasHeight = window.innerHeight;
+        const ctx = canvas.getContext("2d");
+        const input = document.getElementById("instancia");
+        const solucao = document.getElementById("solucao");
+        const btnLerSolucao = document.getElementById("btnLerSolucao");
+        
+        let arestasInstancia = [];
+        let camadasSolucao = [];
+
+        // Leitura
+        input.addEventListener("change", function () {
+            if (this.files && this.files[0]) {
+                var myFile = this.files[0];
+                var reader = new FileReader();
+                reader.addEventListener('load', function (e) {
+                    console.log('e.target.result;',e.target.result)
+                    lerInstancia(String(e.target.result));
+                });
+                reader.readAsBinaryString(myFile);
+            }
+        });
+        btnLerSolucao.addEventListener("click", function (e) {
+            console.log('e.target.result;',solucao.value)
+            lerSolucao(solucao.value);
+        });
+
+        function lerInstancia(inst){
+            //console.log('inst',inst,inst.indexOf('\r'),inst.indexOf('\n'))
+            let instArr = inst.split(/[\r\n]/);
+            let i=2;
+            //console.log('instArr'.instArr)
+            let dados = instArr[0].trim().split(' ');
+            let linha = instArr[i].trim().split(' ');
+            arestasInstancia = [];
+            while(linha && linha.length > 1){
+                arestasInstancia.push({origemId: parseInt(linha[0]), destinoId: parseInt(linha[1])})
+                linha = instArr[++i]?.trim()?.split(' ');
+            }
+
+            //console.log('arestasInstancia',arestasInstancia);
+
+            let numLayers = parseInt(dados[2]);
+
+            canvas.height = numLayers * 200//canvasHeight;
+            canvas.width = canvas.height*1.7 //(canvasWidth*0.8);
+            canvas.style.width  = canvas.width+'px';
+            canvas.style.height = canvas.height+'px'
+        }
+
+        function lerSolucao(sol){
+            let solTxt = String(solucao.value).trim()
+            if(arestasInstancia.length === 0){
+                alert("Selecione o arquivo da instância")
+                return;
+            }
+
+            if(solTxt===""||solTxt==="null"||solTxt==="undefined"){
+                alert("Digite ou cole uma solução")
+                return;
+            }
+
+            let solArr = sol.split('\n');
+            let i=0;
+            let linha = solArr[i].trim().split(/[\s\t]/);
+            if(linha){
+                linha = linha.filter(x=>x!=='')
+            }
+            camadasSolucao = [];
+            while(linha && linha.length > 1){
+                let nosArr = linha[1].trim().split(',');
+                console.log('linha',linha,'nosArr',nosArr)
+                camadasSolucao.push({index: i, nodes: nosArr.map((x=>parseInt(x)))})
+                i++;
+                linha = solArr[i]?.trim()?.split(/[\s\t]/);
+                if(linha){
+                    linha = linha.filter(x=>x!=='')
+                }
+                console.log('next linha',linha)
+            }
+
+            let hMeio = canvas.width / 2;
+            let vMeio = canvas.height / 2;
+            let espCamadas = canvas.height / camadasSolucao.length;
+
+            // Limita espaçamento máximo das camadas
+            //espCamadas = espCamadas > 80 ? 80 : espCamadas;
+
+            console.log('camadasSolucao',camadasSolucao)
+
+            ctx.clearRect(0,0,canvas.width,canvas.height);
+
+            let ly = vMeio - (camadasSolucao.length * espCamadas) / 2;
+            let posicoesNos = []
+            for(const c of camadasSolucao){
+                let espNos = canvas.width / c.nodes.length;
+
+                // Limita espaçamento máximo dos nós
+                espNos = espNos > 50 ? 50 : espNos;
+                let nx = hMeio - (c.nodes.length * espNos) / 2;
+                // Desenha os nós
+                for(const n of c.nodes){
+                    drawNode(nx, ly, String(n), '#ffffff');
+                    posicoesNos[n-1] = {x: nx, y: ly};
+                    nx += espNos;
+                }
+
+                ly += espCamadas;
+            }
+
+            console.log('posicoesNos',posicoesNos)
+
+            // Desenha arcos
+            for(const a of arestasInstancia){
+                let origem = posicoesNos[a.origemId-1]
+                let destino = posicoesNos[a.destinoId-1]
+                if(origem && destino){
+                    canvas_arrow(ctx, origem.x, origem.y+15, destino.x, destino.y-15, '#fff')
+                }
+            }
+
+        }
+
+        function drawNode(x, y, nodeId, cor) {
+            let local_cor = ctx.strokeStyle;
+            let local_cor_fill = ctx.fillStyle;
+            ctx.strokeStyle = cor;
+            ctx.beginPath();
+            ctx.arc(x, y, 15, 0, 2 * Math.PI);
+            ctx.stroke();
+            ctx.closePath();
+            ctx.font = "13px Arial";
+            ctx.fillStyle = cor;
+            ctx.fillText(String(nodeId), x-4, y+4);
+            ctx.strokeStyle = local_cor;
+            ctx.fillStyle=local_cor_fill;
+        }
+
+        drawNode(100, 100, 0, '#ffffff')
+
+        function canvas_arrow(context, fromx, fromy, tox, toy, cor) {
+            const dx = tox - fromx;
+            const dy = toy - fromy;
+            const headlen = 10; //Math.sqrt( dx * dx + dy * dy ) * 0.3; // length of head in pixels
+            const angle = Math.atan2(dy, dx);
+
+            let local_cor = ctx.strokeStyle;
+            ctx.strokeStyle = cor;
+
+            context.beginPath();
+            context.moveTo(fromx, fromy);
+            context.lineTo(tox, toy);
+            context.stroke();
+            context.beginPath();
+            context.moveTo(
+                tox - headlen * Math.cos(angle - Math.PI / 6),
+                toy - headlen * Math.sin(angle - Math.PI / 6)
+            );
+            context.lineTo(tox, toy);
+            context.lineTo(
+                tox - headlen * Math.cos(angle + Math.PI / 6),
+                toy - headlen * Math.sin(angle + Math.PI / 6)
+            );
+            context.stroke();
+
+            ctx.strokeStyle = local_cor;
+        }
+    </script>
+</html>

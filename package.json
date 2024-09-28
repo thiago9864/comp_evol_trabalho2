@@ -1,0 +1,27 @@
+{
+  "name": "trabalho-2",
+  "version": "1.0.0",
+  "description": "Trabalho 2 da disciplina de Computação Evolucionista do PPGMC-UFJF",
+  "main": "dist/index.js",
+  "repository": "https://github.com/thiago9864/comp_evol_trabalho2.git",
+  "author": "Thiago Almeida",
+  "license": "MIT",
+  "private": false,
+  "scripts": {
+    "build": "rimraf ./build && tsc",
+    "start": "yarn build && node build/main.js",
+    "debug": "yarn build && node --inspect-brk build/main.js dev",
+    "dev": "npx nodemon",
+    "profiling": "yarn build && node --prof build/main.js dev"
+  },
+  "devDependencies": {
+    "@types/node": "^20.14.10",
+    "nodemon": "^3.1.4",
+    "rimraf": "5.0.9",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.5.3"
+  },
+  "dependencies": {
+    "pure-rand": "^6.1.0"
+  }
+}
